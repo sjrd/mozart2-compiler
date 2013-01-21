@@ -304,11 +304,11 @@ define
       in
          case Input
          of nil then
-            Result = ctx(valid:true first:EofCh pos:Pos input:Input rest:Result)
+            Result = ctx(true EofCh Result Pos Input)
          [] H|T then
             NextResult
          in
-            Result = ctx(valid:true first:H pos:Pos input:Input rest:!!NextResult)
+            Result = ctx(true H !!NextResult Pos Input)
 
             if H == &\n orelse
                (H == &\r andthen case T of &\n|_ then false else true end) then
@@ -336,26 +336,26 @@ define
       end
 
       % Always valid because we handle the parse error in the grammar
-      true = CtxOut.valid
+      true = CtxOut.1
 
       case Token
       of tkWhitespace then
          {DoTokenize CtxOut PrevWasDot ?Result}
 
       [] tkPreprocessorLine(OptLine OptFileName) then
-         FileName = if OptFileName == nil then CtxOut.pos.1 else OptFileName end
-         Line = if OptLine == nil then CtxOut.pos.2 else OptLine end
-         NewCtx = {MakeStringContext CtxOut.input FileName Line 1}
+         FileName = if OptFileName == nil then (CtxOut.4).1 else OptFileName end
+         Line = if OptLine == nil then (CtxOut.4).2 else OptLine end
+         NewCtx = {MakeStringContext CtxOut.5 FileName Line 1}
       in
          {DoTokenize NewCtx false ?Result}
 
       [] tkEof then
-         Result = reader(tkEof CtxIn.pos#CtxOut.pos true Result)
+         Result = reader(tkEof CtxIn.4#CtxOut.4 true Result)
 
       else
          NextResult
       in
-         Result = reader(Token CtxIn.pos#CtxOut.pos false NextResult)
+         Result = reader(Token CtxIn.4#CtxOut.4 false NextResult)
          {DoTokenize CtxOut (Token == '.') ?NextResult}
       end
    end

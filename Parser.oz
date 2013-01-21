@@ -55,11 +55,11 @@ define
       %% positions %%
       pB: raw(proc {$ CtxIn CtxOut SemOut}
                  CtxOut = CtxIn
-                 SemOut = CtxIn.posbegin
+                 SemOut = CtxIn.5
               end)
       pE: raw(proc {$ CtxIn CtxOut SemOut}
                  CtxOut = CtxIn
-                 SemOut = CtxIn.posend
+                 SemOut = CtxIn.6
               end)
 
       %% tokens %%
@@ -398,7 +398,7 @@ define
       in
          {TG.input CtxIn ?CtxOut ?Sem}
 
-         if CtxOut.valid then
+         if CtxOut.1 then
             [AST FinalDefines] = Sem
          in
             {Dictionary.removeAll DefsDict}

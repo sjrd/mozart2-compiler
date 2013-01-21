@@ -84,12 +84,7 @@ define
    end
 
    proc {MakeEOFContext Token Pos PrevPos ?EOFContext}
-      EOFContext = ctx(valid:true
-                       first:Token
-                       cache:{NewDictionary}
-                       posbegin:Pos
-                       posend:PrevPos
-                       rest:EOFContext)
+      EOFContext = ctx(true Token EOFContext {NewDictionary} Pos PrevPos)
    end
 
    /** Preprocessing
@@ -159,12 +154,9 @@ define
          Cache = {NewDictionary}
          PosBegin = Pos.1
       in
-         ctx(valid:true
-             first:First
-             cache:Cache
-             posbegin:PosBegin
-             posend:PrevPos
-             rest:{Preprocess Rest BaseURL FileStack Offset+1 Pos.2 Defines})
+         ctx(true First
+             {Preprocess Rest BaseURL FileStack Offset+1 Pos.2 Defines}
+             Cache PosBegin PrevPos)
       end
    end
 
@@ -174,12 +166,12 @@ define
       case First
       of tkEof then
          % Reaching an EOF while skipping is an error
-         ctx(valid:true
-             first:tkParseError('Reached EOF while skipping')
-             cache:{NewDictionary}
-             posbegin:Pos.1
-             posend:PrevPos
-             rest:{MakeEOFContext tkEof(Defines) Pos.2 Pos.2})
+         ctx(true
+             tkParseError('Reached EOF while skipping')
+             {MakeEOFContext tkEof(Defines) Pos.2 Pos.2}
+             {NewDictionary}
+             Pos.1
+             PrevPos)
 
       [] tkPreprocessorDirective('ifdef') then
          {Skip Rest BaseURL FileStack Offset PrevPos Defines SkipDepth+1}

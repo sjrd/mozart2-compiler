@@ -37,6 +37,24 @@ define
 
    DictCondExchangeFun = Boot_Dictionary.condExchangeFun
 
+   /* A context, abbreviated ctx, represents a position in the input that is
+    * being parsed. It is a record that must follow the following structure:
+    *
+    * Ctx ::= ctx(1:true 2:<Elem> 3:<Ctx> [4:<Dictionary>] ...)
+    *       | ctx(1:false ...)
+    *
+    * The field under feature 1 tells whether the context is valid or not.
+    * The fields under features 2 and 3 are respectively the first element in
+    * the input stream, and the context representing the rest of the input
+    * stream.
+    *
+    * The feature 4 is required only if caching is used (i.e., if Packrat
+    * parsing is enabled).
+    *
+    * From the point of view of this module, a context may contain any other
+    * user-defined field.
+    */
+
    proc{Translate WG UseCache ?TG}
       fun{TranslateRule G}
          case G
@@ -58,7 +76,7 @@ define
          in
             proc{$ CtxIn CtxOut Sem} CtxMid Sem1 Sem2 in
                {XX CtxIn CtxMid Sem1}
-               if CtxMid.valid then
+               if CtxMid.1 then
                   Sem=Sem1|Sem2
                   {YY CtxMid CtxOut Sem2}
                else
@@ -75,7 +93,7 @@ define
          in
             proc{$ CtxIn CtxOut Sem} CtxMid Sem1 in
                {XX CtxIn CtxMid Sem1}
-               if CtxMid.valid then
+               if CtxMid.1 then
                   {YY CtxMid CtxOut Sem}
                else
                   Sem=Sem1
@@ -88,7 +106,7 @@ define
          in
             proc{$ CtxIn CtxOut Sem} CtxMid in
                {XX CtxIn CtxMid Sem}
-               if CtxMid.valid then
+               if CtxMid.1 then
                   {YY CtxMid CtxOut _}
                else
                   CtxOut=CtxMid
@@ -100,12 +118,12 @@ define
          in
             proc{$ CtxIn CtxOut Sem} CtxTmp Sem1 Sem2 in
                {XX CtxIn CtxTmp Sem1}
-               if CtxTmp.valid then
+               if CtxTmp.1 then
                   Sem=Sem1
                   CtxOut=CtxTmp
                else
                   {YY CtxIn CtxOut Sem2}
-                  if CtxOut.valid then
+                  if CtxOut.1 then
                      Sem=Sem2
                   else
                      Sem=Sem1#Sem2
@@ -120,8 +138,8 @@ define
          in
             proc{$ CtxIn CtxOut Sem} CtxTmp in
                {XX CtxIn CtxTmp Sem}
-               if CtxTmp.valid then
-                  CtxOut={ReplaceFeature CtxIn valid false}
+               if CtxTmp.1 then
+                  CtxOut={ReplaceFeature CtxIn 1 false}
                else
                   CtxOut=CtxIn
                end
@@ -131,10 +149,10 @@ define
          in
             proc{$ CtxIn CtxOut Sem} CtxTmp in
                {XX CtxIn CtxTmp Sem}
-               if CtxTmp.valid then
+               if CtxTmp.1 then
                   CtxOut=CtxIn
                else
-                  CtxOut={ReplaceFeature CtxIn valid false}
+                  CtxOut={ReplaceFeature CtxIn 1 false}
                end
             end
          [] sem(X P) then
@@ -147,8 +165,8 @@ define
          [] nt(X) then
             if UseCache then
                proc{$ CtxIn CtxOut Sem} N in
-                  true=CtxIn.valid
-                  case {DictCondExchangeFun CtxIn.cache X unit N $}
+                  true=CtxIn.1
+                  case {DictCondExchangeFun CtxIn.4 X unit N $}
                   of unit then
                      N=CtxOut#Sem
                      {{CondSelect CtxIn grammar TG}.X CtxIn CtxOut Sem}
@@ -170,8 +188,8 @@ define
             if {IsFree P} then
                Id={NewName} XX in
                proc{P CtxIn CtxOut Sem} N in
-                  true=CtxIn.valid
-                  case {DictCondExchangeFun CtxIn.cache Id unit N $}
+                  true=CtxIn.1
+                  case {DictCondExchangeFun CtxIn.4 Id unit N $}
                   of unit then
                      N=CtxOut#Sem
                      {XX CtxIn CtxOut Sem}
@@ -186,57 +204,57 @@ define
             P
          [] wc then
             proc{$ CtxIn CtxOut Sem}
-               true=CtxIn.valid
-               CtxOut=CtxIn.rest
-               Sem=CtxIn.first
+               true=CtxIn.1
+               CtxOut=CtxIn.3
+               Sem=CtxIn.2
             end
          [] ts(nil) then {TranslateRule empty}
          [] ts(X|Xr) then
             {TranslateRule seq(is(wc fun{$ Y}X==Y end) ts(Xr))}
          [] is(wc P) then
             proc {$ CtxIn CtxOut Sem}
-               true = CtxIn.valid
-               Sem = CtxIn.first
-               CtxOut = {ReplaceFeature CtxIn.rest valid {P Sem}}
+               true = CtxIn.1
+               Sem = CtxIn.2
+               CtxOut = {ReplaceFeature CtxIn.3 1 {P Sem}}
             end
          [] is(X P) then
             XX={TranslateRule X} in
             proc{$ CtxIn CtxOut Sem} CtxTmp in
                {XX CtxIn CtxTmp Sem}
-               if CtxTmp.valid then
-                  CtxOut={ReplaceFeature CtxTmp valid {P Sem}}
+               if CtxTmp.1 then
+                  CtxOut={ReplaceFeature CtxTmp 1 {P Sem}}
                else
                   CtxOut=CtxTmp
                end
             end
          [] elem(P) andthen {IsProcedure P} then
             proc {$ CtxIn CtxOut Sem}
-               true = CtxIn.valid
-               V = CtxIn.first in
+               true = CtxIn.1
+               V = CtxIn.2 in
                case {P V}
                of some(Sem0) then
-                  CtxOut = CtxIn.rest
+                  CtxOut = CtxIn.3
                   Sem = Sem0
                [] false then
-                  CtxOut = {ReplaceFeature CtxIn.rest valid false}
+                  CtxOut = {ReplaceFeature CtxIn.3 1 false}
                   Sem = V
                end
             end
          [] elem(V) then
             proc {$ CtxIn CtxOut Sem}
-               true = CtxIn.valid in
-               Sem = CtxIn.first
+               true = CtxIn.1 in
+               Sem = CtxIn.2
                if Sem == V then
-                  CtxOut = CtxIn.rest
+                  CtxOut = CtxIn.3
                else
-                  CtxOut = {ReplaceFeature CtxIn.rest valid false}
+                  CtxOut = {ReplaceFeature CtxIn.3 1 false}
                end
             end
          [] star(X) then
             XX={TranslateRule X}
             proc {P CtxIn CtxOut Sem} CtxMid Sem1 Sem2 in
                {XX CtxIn CtxMid Sem1}
-               if CtxMid.valid then
+               if CtxMid.1 then
                   Sem=Sem1|Sem2
                   {P CtxMid CtxOut Sem2}
                else
@@ -265,7 +283,7 @@ define
          [] X#R andthen {Not {IsProcedure R}} then
             {TranslateRule sem(X proc{$ Cin Sin Cout Sout}
                                     Cout=Cin
-                                    if Cin.valid then
+                                    if Cin.1 then
                                        Sout=R
                                     else
                                        Sout=Sin
@@ -276,7 +294,7 @@ define
          [] X#P andthen {Procedure.arity P}==2 then
             {TranslateRule sem(X proc{$ Cin Sin Cout Sout}
                                     Cout=Cin
-                                    if Cin.valid then
+                                    if Cin.1 then
                                        Sout={P Sin}
                                     else
                                        Sout=Sin
